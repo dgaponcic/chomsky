@@ -88,14 +88,57 @@ end
 
 
 defmodule Unit_Productions do
-  def get_grammar_without_unit_pr(grammar) do
+  def remove_duplicates(grammar) do
     grammar
+    |> Enum.map(fn {state, transitions} -> {state, Enum.uniq(transitions)} end)
+    |> Map.new
+  end
+
+  def has_unit_pr({_, transitions}) do
+    Enum.any?(transitions, fn transition ->
+      is_unit_pr(transition)
+    end)
+  end
+
+  def is_unit_pr(transition) do
+    String.length(transition) == 1 and transition == String.upcase(transition)
+  end
+
+  def remove_unit_pr(grammar, transitions) do
+    transitions
+    |>  Enum.reduce([], fn transition, acc -> 
+          if is_unit_pr(transition) do
+            Enum.concat(acc, Map.get(grammar, String.to_atom(transition)))
+          else 
+            Enum.concat(acc, [transition])
+          end
+        end)
+  end
+
+  def get_grammar_without_unit_pr(grammar, true) do
+    grammar
+  end
+
+  def get_grammar_without_unit_pr(grammar, false) do
+    grammar
+    |>  Enum.map(fn {state, transitions} -> 
+          {state, remove_unit_pr(grammar, transitions)}
+        end)
+    |> remove_duplicates()
+    |> get_grammar_without_unit_pr(Enum.all?(grammar, &!Unit_Productions.has_unit_pr(&1)))
+  end
+
+end
+
+defmodule Chomsky do
+  def to_chomsky(grammar) do
+    grammar
+    |> Epsilon_Removal.get_grammar_without_epsilon(Enum.all?(grammar, &!Epsilon_Removal.has_epsilon(&1)))
+    |> IO.inspect
+    |> Unit_Productions.get_grammar_without_unit_pr(Enum.all?(grammar, &!Unit_Productions.has_unit_pr(&1)))
+    |> IO.inspect
   end
 end
 
-grammar = %{:S => ["bA", "BC"], :A => ["a", "aS", "bAaAb"], :B => ["A", "bS", "aAa"], :C => ["", "AB"], :D => ["AB"]}
-
-grammar
-|> Epsilon_Removal.get_grammar_without_epsilon(Enum.all?(grammar, &!Epsilon_Removal.has_epsilon(&1)))
-|> Unit_Productions.get_grammar_without_unit_pr()
-|> IO.inspect
+%{:S => ["bA", "BC"], :A => ["a", "aS", "bAaAb"], :B => ["A", "bS", "aAa"], :C => ["", "AB"], :D => ["AB"]}
+|> Chomsky.to_chomsky()
