@@ -130,6 +130,75 @@ defmodule Unit_Productions do
 
 end
 
+
+defmodule Unproductive_Removal do
+
+  def is_terminal(transition) do
+    String.length(transition) == 1 and transition == String.downcase(transition)
+  end
+
+  def is_non_terminal(transition) do
+    transition == String.upcase(transition)
+  end
+
+  def get_non_terminals(transition) do
+    String.graphemes(transition)
+    |> Enum.filter(&is_non_terminal(&1))
+    |> Enum.uniq
+    |> Enum.map(fn state -> String.to_atom(state) end)
+  end
+
+  def is_productive(transition, productive) do
+    get_non_terminals(transition)
+    |> Enum.all?(fn state -> Enum.member?(productive, state) end)
+  end
+
+  def is_unproductive(transition, unproductive) do
+    get_non_terminals(transition)
+    |> Enum.any?(fn state -> Enum.member?(unproductive, state) end)
+  end
+
+  def find_all_terminal_states(grammar) do
+    grammar
+    |>  Enum.reduce([], fn {state, transitions}, acc -> 
+          if Enum.any?(transitions, &is_terminal(&1)) do [state | acc] else acc end
+        end)
+  end
+
+  def find_all_productive_states(_, productive, true) do
+    productive
+  end
+
+  def find_all_productive_states(grammar, productive, false) do
+    new_productive = grammar
+    |>  Enum.reduce([], fn {state, transitions}, acc -> 
+          if Enum.any?(transitions, &is_productive(&1, productive)) do [state | acc] else acc end
+        end)
+
+    find_all_productive_states(grammar, new_productive, new_productive == productive)
+  end
+
+  def filter_transitions(transitions, unproductive) do
+    Enum.filter(transitions, &!is_unproductive(&1, unproductive))
+  end
+
+  def filter_unproductive(grammar, unproductive) do
+    grammar
+    |>  Enum.reduce(%{}, fn {state, transitions}, acc -> 
+          if Enum.member?(unproductive, state) do acc else Map.put(acc, state, transitions) end
+        end)
+    |>  Enum.map(fn {state, transitions} -> 
+          {state, filter_transitions(transitions, unproductive)}
+        end)
+  end
+
+  def get_grammar_without_unproductive(grammar) do
+    productive = find_all_productive_states(grammar, find_all_terminal_states(grammar), false)
+    unproductive = Enum.filter(Map.keys(grammar), fn state -> !Enum.member?(productive, state) end)
+    if length(unproductive) > 0 do filter_unproductive(grammar, unproductive) else grammar end
+  end
+end
+
 defmodule Chomsky do
   def to_chomsky(grammar) do
     grammar
@@ -137,8 +206,10 @@ defmodule Chomsky do
     |> IO.inspect
     |> Unit_Productions.get_grammar_without_unit_pr(Enum.all?(grammar, &!Unit_Productions.has_unit_pr(&1)))
     |> IO.inspect
+    |> Unproductive_Removal.get_grammar_without_unproductive()
+    |> IO.inspect
   end
 end
 
-%{:S => ["bA", "BC"], :A => ["a", "aS", "bAaAb"], :B => ["A", "bS", "aAa"], :C => ["", "AB"], :D => ["AB"]}
+%{:S => ["bA", "BC"], :A => ["a", "aS"], :B => ["A", "bS", "aAa"], :C => ["", "AB", "bAaAbE"], :D => ["AB"]}
 |> Chomsky.to_chomsky()
