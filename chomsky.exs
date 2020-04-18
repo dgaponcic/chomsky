@@ -286,12 +286,19 @@ defmodule Chomsky do
 
   def add_states_from_2(transition, counter, acc) do
     head = Enum.at(String.graphemes(transition), 0)
-    if head == String.downcase(head) do
-      if Enum.member?(Map.values(acc), head) do acc else acc = Map.put(acc, head, :"X#{counter.()}") end
-    else
-      tail = Enum.at(String.graphemes(transition), 1)
-      if Enum.member?(Map.values(acc), tail) do acc else Map.put(acc, tail, :"X#{counter.()}") end
+    tail = Enum.at(String.graphemes(transition), 1)
+
+    cond do
+      transition == String.downcase(transition) -> 
+        if Enum.member?(Map.keys(acc), head) do acc else Map.put(acc, head, :"X#{counter.()}") end
+        if Enum.member?(Map.keys(acc), tail) do acc else Map.put(acc, tail, :"X#{counter.()}") end
+      head == String.downcase(head) ->
+        if Enum.member?(Map.keys(acc), head) do acc else Map.put(acc, head, :"X#{counter.()}") end
+      true ->
+        tail = Enum.at(String.graphemes(transition), 1)
+        if Enum.member?(Map.keys(acc), tail) do acc else Map.put(acc, tail, :"X#{counter.()}") end
     end
+
   end
 
   def add_states_from_more(transition, counter, acc) do
@@ -323,12 +330,17 @@ defmodule Chomsky do
 
   def update_transition_from_2(transition, new_states) do
     head = Enum.at(String.graphemes(transition), 0)
-    if head == String.downcase(head) do
-      String.replace(transition, head, Atom.to_string(Map.get(new_states, head)), global: false)
-    else
-      tail = Enum.at(String.graphemes(transition), 1)
-      String.replace(transition, tail, Atom.to_string(Map.get(new_states, tail)), global: false)
-    end
+    tail = Enum.at(String.graphemes(transition), 1)
+
+    cond do
+      transition == String.downcase(transition) -> 
+        transition = String.replace(transition, head, Atom.to_string(Map.get(new_states, head)), global: false)
+        String.replace(transition, tail, Atom.to_string(Map.get(new_states, tail)), global: false)
+      head == String.downcase(head) ->
+        String.replace(transition, head, Atom.to_string(Map.get(new_states, head)), global: false)
+      true ->
+        String.replace(transition, tail, Atom.to_string(Map.get(new_states, tail)), global: false)
+      end
   end
 
   def update_first_state(transition, head, new_states) do
@@ -374,29 +386,41 @@ defmodule Chomsky do
     end)
   end
 
-  def convert_transitions(grammar, _, _, true) do
+  def get_new_states(grammar, counter, new_states) do
     grammar
-  end
-
-  def convert_transitions(grammar, counter, states, false) do
-    new_states = grammar
     |>  Enum.reduce(%{}, fn {_, transitions}, acc -> 
           add_new_states(transitions, acc, counter)
         end)
-    |> Enum.concat(states)
+    |> Enum.concat(new_states)
     |> Map.new
+  end
 
-    grammar = grammar
+ def transform_transitions2chomsky(grammar, new_states) do
+    grammar
     |>  Enum.map(fn {state, transitions} -> 
           {state, update_transitions(transitions, new_states)}
         end)
     |> Map.new
+  end
 
-    grammar = new_states
+  def add_new_states2grammar(grammar, new_states) do
+    new_states
     |>  Enum.reduce(grammar, fn {transition, state}, acc -> 
           Map.put_new(acc, state, [transition])
         end)
     |> Map.new
+  end
+
+  def convert_transitions(grammar, _, _, true) do
+    grammar
+  end
+
+  def convert_transitions(grammar, counter, new_states, false) do
+    new_states = get_new_states(grammar, counter, new_states)
+
+    grammar = grammar
+    |> transform_transitions2chomsky(new_states)
+    |> add_new_states2grammar(new_states)
 
     convert_transitions(grammar, counter, new_states, Enum.all?(grammar, &is_in_chomsky(&1)))
   end
@@ -410,5 +434,7 @@ defmodule Chomsky do
   end
 end
 
-%{:S => ["bA", "BC"], :A => ["a", "aS", "bAaAb"], :B => ["A", "bS", "aAa"], :C => ["", "AB"], :D => ["AB"]}
+# %{:S => ["bA", "BC"], :A => ["a", "aS", "bAaAb"], :B => ["A", "bS", "aAa"], :C => ["", "AB"], :D => ["AB"]}
+%{:S => ["dB", "AB"], :A => ["d", "dS", "aAaAb", ""], :B => ["a", "aS", "A"], :D => ["Aba"]}
+
 |> Chomsky.to_chomsky()
