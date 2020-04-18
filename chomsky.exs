@@ -266,15 +266,146 @@ defmodule Inaccessible_removal do
 end
 
 defmodule Chomsky do
-  def to_chomsky(grammar) do
+  def init_grammar(grammar) do
     grammar
     |> Epsilon_Removal.get_grammar_without_epsilon(Enum.all?(grammar, &!Epsilon_Removal.has_epsilon(&1)))
-    |> IO.inspect
+    # |> IO.inspect
     |> Unit_Productions.get_grammar_without_unit_pr(Enum.all?(grammar, &!Unit_Productions.has_unit_pr(&1)))
-    |> IO.inspect
+    # |> IO.inspect
     |> Unproductive_Removal.get_grammar_without_unproductive()
-    |> IO.inspect
+    # |> IO.inspect
     |> Inaccessible_removal.get_grammar_without_inaccessible()
+    |> IO.inspect
+  end
+
+
+  def get_counter() do
+    {:ok, pid} = Agent.start_link(fn -> 1 end)
+    fn -> Agent.get_and_update(pid, fn i -> {i, i + 1} end) end
+  end
+
+  def add_states_from_2(transition, counter, acc) do
+    head = Enum.at(String.graphemes(transition), 0)
+    if head == String.downcase(head) do
+      if Enum.member?(Map.values(acc), head) do acc else acc = Map.put(acc, head, :"X#{counter.()}") end
+    else
+      tail = Enum.at(String.graphemes(transition), 1)
+      if Enum.member?(Map.values(acc), tail) do acc else Map.put(acc, tail, :"X#{counter.()}") end
+    end
+  end
+
+  def add_states_from_more(transition, counter, acc) do
+    [head| tail] = String.graphemes(transition)
+
+    if head != String.upcase(head) do
+      if Enum.member?(Map.keys(acc), head) do Map.put(acc, head, :"X#{counter.()}") end
+    end
+
+    tail = List.to_string(tail)
+    if Enum.member?(Map.keys(acc), tail) do acc else Map.put(acc, tail, :"X#{counter.()}") end
+  end
+
+  def add_new_states(transitions, new_states, counter) do
+    Enum.reduce(transitions, new_states, fn transition, acc -> 
+
+      cond do 
+      length(String.graphemes(transition)) == 2 and transition != String.upcase(transition)->
+        add_states_from_2(transition, counter, acc)
+      length(String.graphemes(transition)) > 2 and !Regex.match?(~r/\d/, transition)->
+        add_states_from_more(transition, counter, acc)
+      true ->
+        acc
+      end
+
+    end)
+  end
+
+
+  def update_transition_from_2(transition, new_states) do
+    head = Enum.at(String.graphemes(transition), 0)
+    if head == String.downcase(head) do
+      String.replace(transition, head, Atom.to_string(Map.get(new_states, head)), global: false)
+    else
+      tail = Enum.at(String.graphemes(transition), 1)
+      String.replace(transition, tail, Atom.to_string(Map.get(new_states, tail)), global: false)
+    end
+  end
+
+  def update_first_state(transition, head, new_states) do
+    if head != String.upcase(head) do
+      String.replace(transition, head, Atom.to_string(Map.get(new_states, head)), global: false)
+    else
+      transition
+    end
+  end
+
+  def update_transition_from_more(transition, new_states) do
+    [head| tail] = String.graphemes(transition)
+    tail = List.to_string(tail)
+    new_transition = update_first_state(transition, head, new_states)
+    String.replace(new_transition, tail, Atom.to_string(Map.get(new_states, tail)), global: false)
+  end
+
+  def update_transitions(transitions, new_states) do
+    Enum.map(transitions, fn transition -> 
+      cond do 
+        length(String.graphemes(transition)) == 2 and transition != String.upcase(transition)->
+          update_transition_from_2(transition, new_states)
+        length(String.graphemes(transition)) > 2 and !Regex.match?(~r/\d/, transition) ->
+          update_transition_from_more(transition, new_states)
+        true ->
+          transition
+      end
+    end)
+  end
+
+  def is_in_chomsky({_, transitions}) do
+    Enum.all?(transitions, fn transition -> 
+      cond do
+        length(String.graphemes(transition)) == 2 and transition == String.upcase(transition) ->
+          true
+        length(String.graphemes(transition)) == 1 and transition == String.downcase(transition) ->
+          true
+        Regex.match?(~r/\d/, transition) ->
+          true
+        true ->
+          false
+      end
+    end)
+  end
+
+  def convert_transitions(grammar, _, _, true) do
+    grammar
+  end
+
+  def convert_transitions(grammar, counter, states, false) do
+    new_states = grammar
+    |>  Enum.reduce(%{}, fn {_, transitions}, acc -> 
+          add_new_states(transitions, acc, counter)
+        end)
+    |> Enum.concat(states)
+    |> Map.new
+
+    grammar = grammar
+    |>  Enum.map(fn {state, transitions} -> 
+          {state, update_transitions(transitions, new_states)}
+        end)
+    |> Map.new
+
+    grammar = new_states
+    |>  Enum.reduce(grammar, fn {transition, state}, acc -> 
+          Map.put_new(acc, state, [transition])
+        end)
+    |> Map.new
+
+    convert_transitions(grammar, counter, new_states, Enum.all?(grammar, &is_in_chomsky(&1)))
+  end
+
+  def to_chomsky(grammar) do
+    counter = get_counter()
+    grammar
+    |> init_grammar()
+    |> convert_transitions(counter, [], false)
     |> IO.inspect
   end
 end
