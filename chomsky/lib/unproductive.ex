@@ -78,6 +78,7 @@ defmodule UnproductiveRemoval do
     |> Enum.map(fn {state, transitions} ->
       {state, filter_transitions(transitions, unproductive)}
     end)
+    |> Map.new()
   end
 
   def get_grammar_without_unproductive(grammar) do

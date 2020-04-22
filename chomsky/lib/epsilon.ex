@@ -6,19 +6,6 @@ defmodule EpsilonRemoval do
     |> Enum.map(fn {_, i} -> i end)
   end
 
-  defp get_combinations_n_states(n, possitions) do
-    Enum.reduce(Combinations.comb(n, possitions), [], fn x, acc ->
-      Enum.concat(acc, [x])
-    end)
-  end
-
-  defp get_all_combinations(possitions) do
-    1..length(possitions)
-    |> Enum.reduce([], fn i, acc ->
-      Enum.concat(acc, get_combinations_n_states(i, possitions))
-    end)
-  end
-
   defp get_new_transition(combination, transition) do
     combination
     |> Enum.reduce(String.graphemes(transition), fn id, acc ->
@@ -30,7 +17,7 @@ defmodule EpsilonRemoval do
   defp replace_epsilon_state(state, transition) do
     String.graphemes(transition)
     |> get_state_pos(Atom.to_string(state))
-    |> get_all_combinations()
+    |> Combinations.get_all_combinations()
     |> Enum.reduce([transition], fn combination, acc ->
       Enum.concat(acc, [get_new_transition(combination, transition)])
     end)
@@ -80,20 +67,25 @@ defmodule EpsilonRemoval do
     |> Map.new()
   end
 
-  def has_epsilon({_state, transitions}) do
+  defp has_epsilon({_state, transitions}) do
     Enum.member?(transitions, "")
   end
 
-  def get_grammar_without_epsilon(grammar, true) do
+  defp get_grammar_without_epsilon(grammar, true) do
     grammar
   end
 
-  def get_grammar_without_epsilon(grammar, false) do
+  defp get_grammar_without_epsilon(grammar, false) do
     grammar
     |> Enum.reduce(grammar, fn {state, transitions}, acc ->
       remove_epsilon(acc, state, has_epsilon({state, transitions}))
     end)
     |> remove_duplicates()
-    |> get_grammar_without_epsilon(Enum.all?(grammar, &(!EpsilonRemoval.has_epsilon(&1))))
+    |> get_grammar_without_epsilon(Enum.all?(grammar, &(!has_epsilon(&1))))
+  end
+
+  def get_grammar_without_epsilon(grammar) do
+    grammar
+    |> get_grammar_without_epsilon(Enum.all?(grammar, &(!has_epsilon(&1))))
   end
 end

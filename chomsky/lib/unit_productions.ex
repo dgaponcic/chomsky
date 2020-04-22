@@ -35,11 +35,18 @@ defmodule UnitProductions do
   end
 
   def get_grammar_without_unit_pr(grammar, false) do
+    grammar =
+      grammar
+      |> Enum.map(fn {state, transitions} ->
+        {state, remove_unit_pr(grammar, transitions)}
+      end)
+      |> remove_duplicates()
+
+    get_grammar_without_unit_pr(grammar, Enum.all?(grammar, &(!UnitProductions.has_unit_pr(&1))))
+  end
+
+  def get_grammar_without_unit_pr(grammar) do
     grammar
-    |> Enum.map(fn {state, transitions} ->
-      {state, remove_unit_pr(grammar, transitions)}
-    end)
-    |> remove_duplicates()
-    |> get_grammar_without_unit_pr(Enum.all?(grammar, &(!UnitProductions.has_unit_pr(&1))))
+    |> get_grammar_without_unit_pr(Enum.all?(grammar, &(!has_unit_pr(&1))))
   end
 end
