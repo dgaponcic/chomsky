@@ -5,5 +5,6 @@
   :C => ["", "AB"],
   :D => ["AB"]
 }
+
 |> Chomsky.convert2chomsky()
 |> IO.inspect()

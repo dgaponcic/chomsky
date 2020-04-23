@@ -1,21 +1,9 @@
-# Chomsky
+to run use: 
+1. iex -S mix (use recompile() command in the interactive shell to recompile)
+OR 
+2. mix run
 
-**TODO: Add description**
-
-## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `chomsky` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:chomsky, "~> 0.1.0"}
-  ]
-end
-```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/chomsky](https://hexdocs.pm/chomsky).
-
+to run the test suite use: 
+1. mix test
+OR
+1. mix test --trace (for a verbose output)

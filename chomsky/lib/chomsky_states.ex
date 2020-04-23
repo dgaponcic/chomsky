@@ -1,12 +1,4 @@
 defmodule ChomskyStates do
-  def are_terminals(transition) do
-    transition == String.downcase(transition)
-  end
-
-  def are_nonterminals(transition) do
-    transition == String.upcase(transition)
-  end
-
   defp convert_terminals(init_acc, transition, counter) do
     Enum.reduce(String.graphemes(transition), init_acc, fn symbol, acc ->
       convert_one_symbol(acc, symbol, counter)
@@ -51,22 +43,12 @@ defmodule ChomskyStates do
     convert_one_symbol(acc, List.to_string(tail), counter)
   end
 
-  def was_converted(transition) do
-    Regex.match?(~r/\d/, transition)
-  end
-
   defp is_one_terminal(transition) do
     length(String.graphemes(transition)) == 1 and !are_nonterminals(transition)
   end
 
   defp are_two_nonterminal(transition) do
     length(String.graphemes(transition)) == 2 and are_nonterminals(transition)
-  end
-
-  def is_in_chomsky({_state, transitions}) do
-    Enum.all?(transitions, fn transition ->
-      are_two_nonterminal(transition) or is_one_terminal(transition) or was_converted(transition)
-    end)
   end
 
   defp add_new_state(transition, counter, acc) do
@@ -85,6 +67,24 @@ defmodule ChomskyStates do
   defp add_new_states(transitions, new_states, counter) do
     Enum.reduce(transitions, new_states, fn transition, acc ->
       add_new_state(transition, counter, acc)
+    end)
+  end
+
+  def are_terminals(transition) do
+    transition == String.downcase(transition)
+  end
+
+  def are_nonterminals(transition) do
+    transition == String.upcase(transition)
+  end
+
+  def was_converted(transition) do
+    Regex.match?(~r/\d/, transition)
+  end
+
+  def is_in_chomsky({_state, transitions}) do
+    Enum.all?(transitions, fn transition ->
+      are_two_nonterminal(transition) or is_one_terminal(transition) or was_converted(transition)
     end)
   end
 
