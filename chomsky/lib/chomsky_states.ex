@@ -82,6 +82,14 @@ defmodule ChomskyStates do
     Regex.match?(~r/\d/, transition)
   end
 
+  def add_new_states2grammar(grammar, new_states) do
+    new_states
+    |> Enum.reduce(grammar, fn {transition, state}, acc ->
+      Map.put_new(acc, state, [transition])
+    end)
+    |> Map.new()
+  end
+
   def is_in_chomsky({_state, transitions}) do
     Enum.all?(transitions, fn transition ->
       are_two_nonterminal(transition) or is_one_terminal(transition) or was_converted(transition)

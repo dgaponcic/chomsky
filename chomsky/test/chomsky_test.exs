@@ -178,4 +178,25 @@ defmodule ChomskyTest do
 
     assert Chomsky.convert2chomsky(input) == output
   end
+
+  test "V13" do
+    input = %{
+      :S => ["aB", "DA"],
+      :A => ["a", "BD", "bDAB"],
+      :B => ["b", "BA"],
+      :D => ["", "BA"],
+      :C => ["BA"]
+    }
+
+    output = %{
+      A: ["a", "BD", "b", "BA", "X1X2", "X1X3"],
+      B: ["b", "BA"],
+      D: ["BA"],
+      X1: ["b"],
+      X2: ["DX3"],
+      X3: ["AB"]
+    }
+
+    assert Chomsky.convert2chomsky(input) == output
+  end
 end

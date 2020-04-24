@@ -12,18 +12,10 @@ defmodule Chomsky do
     fn -> Agent.get_and_update(pid, fn i -> {i, i + 1} end) end
   end
 
-  defp add_new_states2grammar(grammar, new_states) do
-    new_states
-    |> Enum.reduce(grammar, fn {transition, state}, acc ->
-      Map.put_new(acc, state, [transition])
-    end)
-    |> Map.new()
-  end
-
   defp get_updated_grammar(grammar, new_states) do
     grammar
     |> ChomskyTransitions.transform_transitions2chomsky(new_states)
-    |> add_new_states2grammar(new_states)
+    |> ChomskyStates.add_new_states2grammar(new_states)
   end
 
   def convert2chomsky(grammar, _counter, _new_states, true) do
